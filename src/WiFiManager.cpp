@@ -136,7 +136,11 @@ void WiFiManager::setupConfigPortal() {
 }
 
 boolean WiFiManager::autoConnect() {
+#if defined(WIO_TERMINAL)
+  String ssid = "WT-" + WioTerminalID();
+#else
   String ssid = "ESP" + String(ESP_getChipId());
+#endif
   return autoConnect(ssid.c_str(), NULL);
 }
 
@@ -174,7 +178,11 @@ boolean WiFiManager::configPortalHasTimeout(){
 }
 
 boolean WiFiManager::startConfigPortal() {
+#if defined(WIO_TERMINAL)
+  String ssid = "WT-" + WioTerminalID();
+#else
   String ssid = "ESP" + String(ESP_getChipId());
+#endif
   return startConfigPortal(ssid.c_str(), NULL);
 }
 
@@ -269,6 +277,8 @@ int WiFiManager::connectWifi(String ssid, String pass) {
       ETS_UART_INTR_DISABLE();
       wifi_station_disconnect();
       ETS_UART_INTR_ENABLE();
+#elif defined(WIO_TERMINAL)
+      wifi_disconnect();
 #else
       esp_wifi_disconnect();
 #endif
@@ -350,13 +360,16 @@ String WiFiManager::getConfigPortalSSID() {
 }
 
 void WiFiManager::resetSettings() {
-  DEBUG_WM(F("settings invalidated"));
-  DEBUG_WM(F("THIS MAY CAUSE AP NOT TO START UP PROPERLY. YOU NEED TO COMMENT IT OUT AFTER ERASING THE DATA."));
+  DEBUG_WM(F("Removing Wi-Fi Settings"));
+  // DEBUG_WM(F("THIS MAY CAUSE AP NOT TO START UP PROPERLY. YOU NEED TO COMMENT IT OUT AFTER ERASING THE DATA."));
   // TODO On ESP32 this does not erase the SSID and password. See
   // https://github.com/espressif/arduino-esp32/issues/400
   // For now, use "make erase_flash".
   WiFi.disconnect(true);
-  //delay(200);
+#if defined(WIO_TERMINAL)
+  WiFi.clearConnectedSetting();
+#endif
+  delay(200);
 }
 void WiFiManager::setTimeout(unsigned long seconds) {
   setConfigPortalTimeout(seconds);
@@ -431,6 +444,7 @@ void WiFiManager::handleWifi(boolean scan) {
 
   if (scan) {
     int n = WiFi.scanNetworks();
+    if (n > 15) n = 15; // Limits the scanned network
     DEBUG_WM(F("Scan done"));
     if (n == 0) {
       DEBUG_WM(F("No networks found"));
@@ -650,7 +664,11 @@ void WiFiManager::handleInfo() {
   page += FPSTR(HTTP_HEAD_END);
   page += F("<dl>");
   page += F("<dt>Chip ID</dt><dd>");
+#if defined(WIO_TERMINAL)
+  page += WioTerminalID();
+#else
   page += ESP_getChipId();
+#endif
   page += F("</dd>");
   page += F("<dt>Flash Chip ID</dt><dd>");
 #if defined(ESP8266)
@@ -661,7 +679,11 @@ void WiFiManager::handleInfo() {
 #endif
   page += F("</dd>");
   page += F("<dt>IDE Flash Size</dt><dd>");
+#if defined(WIO_TERMINAL)
+  page += String("512kb");
+#else
   page += ESP.getFlashChipSize();
+#endif
   page += F(" bytes</dd>");
   page += F("<dt>Real Flash Size</dt><dd>");
 #if defined(ESP8266)
@@ -709,6 +731,8 @@ void WiFiManager::handleReset() {
   delay(5000);
 #if defined(ESP8266)
   ESP.reset();
+#elif defined(WIO_TERMINAL)
+  NVIC_SystemReset();
 #else
   ESP.restart();
 #endif
@@ -813,4 +837,23 @@ String WiFiManager::toStringIp(IPAddress ip) {
   }
   res += String(((ip >> 8 * 3)) & 0xFF);
   return res;
+}
+
+String WiFiManager::WioTerminalID()
+{
+    char ID[50];
+    uint32_t *id_word0 = (uint32_t *)DEVICE_ID_WORD0;
+    uint32_t *id_word1 = (uint32_t *)DEVICE_ID_WORD1;
+    uint32_t *id_word2 = (uint32_t *)DEVICE_ID_WORD2;
+    uint32_t *id_word3 = (uint32_t *)DEVICE_ID_WORD3;
+
+    snprintf(ID, 30, "%02X:%02X:%02X:%02X:%02X:%02X"
+        ,(*id_word0 >> 8) & 0xFF
+        ,(*id_word0 >> 0) & 0xFF
+        ,(*id_word3 >> 24)& 0xFF
+        ,(*id_word3 >> 16)& 0xFF
+        ,(*id_word3 >> 8) & 0xFF
+        ,(*id_word3 >> 0) & 0xFF
+    );
+    return ID;
 }
