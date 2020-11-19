@@ -112,7 +112,7 @@ void WiFiManager::setupConfigPortal() {
     WiFi.softAP(_apName);
   }
 
-  delay(500); // Without delay I've seen the IP address blank
+  // delay(500); // Without delay I've seen the IP address blank
   DEBUG_WM(F("AP IP address: "));
   DEBUG_WM(WiFi.softAPIP());
 
@@ -128,7 +128,7 @@ void WiFiManager::setupConfigPortal() {
   server->on("/i", std::bind(&WiFiManager::handleInfo, this));
   server->on("/r", std::bind(&WiFiManager::handleReset, this));
   //server->on("/generate_204", std::bind(&WiFiManager::handle204, this));  //Android/Chrome OS captive portal check.
-  server->on("/fwlink", std::bind(&WiFiManager::handleRoot, this));  //Microsoft captive portal. Maybe not needed. Might be handled by notFound handler.
+  // server->on("/fwlink", std::bind(&WiFiManager::handleRoot, this));  //Microsoft captive portal. Maybe not needed. Might be handled by notFound handler.
   server->onNotFound (std::bind(&WiFiManager::handleNotFound, this));
   server->begin(); // Web server start
   DEBUG_WM(F("HTTP server started"));
@@ -215,7 +215,7 @@ boolean  WiFiManager::startConfigPortal(char const *apName, char const *apPasswo
 
     if (connect) {
       connect = false;
-      delay(2000);
+      // delay(2000);
       DEBUG_WM(F("Connecting to new AP"));
 
       // using user-provided  _ssid, _pass in place of system-stored ssid and pass
@@ -318,7 +318,7 @@ uint8_t WiFiManager::waitForConnectResult() {
       if (status == WL_CONNECTED || status == WL_CONNECT_FAILED) {
         keepConnecting = false;
       }
-      delay(100);
+      delay(20);
     }
     return status;
   }
